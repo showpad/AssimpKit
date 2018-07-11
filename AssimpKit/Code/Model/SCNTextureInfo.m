@@ -35,6 +35,7 @@
 
 
 #import "SCNTextureInfo.h"
+#import "Cacher.h"
 #import <ImageIO/ImageIO.h>
 #import <CoreImage/CoreImage.h>
 
@@ -225,10 +226,10 @@
                 {
                 	texturePath = [sceneDir stringByAppendingString:texFileName];
                 }
-                self.externalTexturePath = texturePath;
-                DLog(@"  tex path is %@", self.externalTexturePath);
-                [self generateCGImageForExternalTextureAtPath:
-                          self.externalTexturePath];
+				self.externalTexturePath = texturePath;
+				DLog(@"  tex path is %@", self.externalTexturePath);
+				[self generateCGImageForExternalTextureAtPath:
+				 self.externalTexturePath];
             }
         }
     }
@@ -273,9 +274,17 @@
 -(void)generateCGImageForExternalTextureAtPath:(NSString*)path
 {
     DLog(@" Generating external texture");
-    NSURL *imageURL = [NSURL fileURLWithPath:path];
+	id imageRef = [Cacher sharedCacher].cachedImages[path];
+	if (imageRef)
+	{
+		self.image = (__bridge CGImageRef)imageRef;
+		return;
+	}
+
+	NSURL *imageURL = [NSURL fileURLWithPath:path];
     self.imageSource = CGImageSourceCreateWithURL((CFURLRef)imageURL, NULL);
     self.image = self.imageSource ? CGImageSourceCreateImageAtIndex(self.imageSource, 0, NULL) : NULL;
+	[[Cacher sharedCacher].cachedImages setObject:self.image forKey:path];
 }
 
 #pragma mark - Extract color
@@ -330,7 +339,7 @@
  */
 -(id)getMaterialPropertyContents {
     if (self.applyEmbeddedTexture || self.applyExternalTexture) {
-        return (id)self.image;
+		return (id)self.image;
     } else {
         return (id)self.color;
     }
